@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PreferenceSpecifiers</key>
+	<array>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>Title</key>
+			<string>Volume Threshold</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSSliderSpecifier</string>
+			<key>Key</key>
+			<string>DRThreshold</string>
+			<key>DefaultValue</key>
+			<integer>-20</integer>
+			<key>MinimumValue</key>
+			<integer>-40</integer>
+			<key>MaximumValue</key>
+			<integer>0</integer>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>Title</key>
+			<string>Minimum Video Length</string>
+		</dict>
+		<dict>
+			<key>Title</key>
+			<string>Minimum Record Time</string>
+			<key>Type</key>
+			<string>PSSliderSpecifier</string>
+			<key>Key</key>
+			<string>DRMinimumRecordTime</string>
+			<key>DefaultValue</key>
+			<integer>240</integer>
+			<key>MinimumValue</key>
+			<integer>10</integer>
+			<key>MaximumValue</key>
+			<integer>360</integer>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>Title</key>
+			<string>Minimum Trigger Duration</string>
+		</dict>
+		<dict>
+			<key>Title</key>
+			<string>Minimum Trigger Time</string>
+			<key>Type</key>
+			<string>PSSliderSpecifier</string>
+			<key>Key</key>
+			<string>DRMinimumTriggerTime</string>
+			<key>DefaultValue</key>
+			<real>0.6</real>
+			<key>MinimumValue</key>
+			<real>0.1</real>
+			<key>MaximumValue</key>
+			<integer>10</integer>
+		</dict>
+	</array>
+	<key>StringsTable</key>
+	<string>Root</string>
+</dict>
+</plist>
