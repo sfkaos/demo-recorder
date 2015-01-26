@@ -16,4 +16,6 @@
 #import "SNS.h"
 #import "AWSCore.h"
 
+#import <CommonCrypto/CommonCrypto.h>
+
 #endif

@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		3300BB231A769DCC00843B14 /* Array+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3300BB221A769DCC00843B14 /* Array+Extensions.swift */; };
 		3300BB251A76BBE100843B14 /* Secrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3300BB241A76BBE100843B14 /* Secrets.swift */; };
+		3300BB271A76E77A00843B14 /* NSURL+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3300BB261A76E77A00843B14 /* NSURL+Extensions.swift */; };
 		3316400C1A642A69007F0F03 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3316400B1A642A69007F0F03 /* AppDelegate.swift */; };
 		3316400E1A642A69007F0F03 /* CameraViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3316400D1A642A69007F0F03 /* CameraViewController.swift */; };
 		331640111A642A69007F0F03 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3316400F1A642A69007F0F03 /* Main.storyboard */; };
@@ -33,6 +34,7 @@
 /* Begin PBXFileReference section */
 		3300BB221A769DCC00843B14 /* Array+Extensions.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "Array+Extensions.swift"; sourceTree = "<group>"; };
 		3300BB241A76BBE100843B14 /* Secrets.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Secrets.swift; sourceTree = "<group>"; };
+		3300BB261A76E77A00843B14 /* NSURL+Extensions.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "NSURL+Extensions.swift"; sourceTree = "<group>"; };
 		331640061A642A69007F0F03 /* Demo Recorder.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Demo Recorder.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		3316400A1A642A69007F0F03 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		3316400B1A642A69007F0F03 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -97,6 +99,7 @@
 				3300BB241A76BBE100843B14 /* Secrets.swift */,
 				3316400D1A642A69007F0F03 /* CameraViewController.swift */,
 				3367977F1A696D020092E08B /* UIInterfaceOrientation+Extensions.swift */,
+				3300BB261A76E77A00843B14 /* NSURL+Extensions.swift */,
 				3300BB221A769DCC00843B14 /* Array+Extensions.swift */,
 				3352666E1A645374006056A3 /* BridgingHeader.h */,
 				3316400F1A642A69007F0F03 /* Main.storyboard */,
@@ -288,6 +291,7 @@
 			files = (
 				3316400E1A642A69007F0F03 /* CameraViewController.swift in Sources */,
 				3300BB251A76BBE100843B14 /* Secrets.swift in Sources */,
+				3300BB271A76E77A00843B14 /* NSURL+Extensions.swift in Sources */,
 				3316400C1A642A69007F0F03 /* AppDelegate.swift in Sources */,
 				336797801A696D020092E08B /* UIInterfaceOrientation+Extensions.swift in Sources */,
 				3300BB231A769DCC00843B14 /* Array+Extensions.swift in Sources */,

@@ -270,6 +270,9 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
                 self.updateUploadLabel()
             })
         })
+        request.contentMD5 = outputFileURL!.computeMD5()
+
+        NSLog("MD5 of video %@ = %@", outputFileURL, request.contentMD5);
 
         uploads.setValue(0.0, forKey: request.key);
         updateUploadLabel();
