@@ -12,3 +12,33 @@ Demo Recorder is most useful when the iOS device used is connected to a micropho
     open "Demo Recorder.xcworkspace"
     
 After cloning and setting up the repo, make sure you add your own Amazon S3 keys, bucket name, and bucket prefix to [`Secrets.swift`](https://github.com/twg/demo-recorder/blob/master/Demo%20Recorder/Secrets.example.swift).
+
+## S3 Setup
+
+When using Demo Recorder, you'll want to set up a single Amazon IAM user
+with independent credentials. These credentials can be given only the permissions required
+to upload video files to a given bucket. Below is an example IAM policy that provides these permissions:
+
+    {
+      "Version": "2012-10-17",
+      "Statement":[{
+        "Effect": "Allow",
+        "Action": "s3:ListAllMyBuckets",
+        "Resource": ["arn:aws:s3:::*"]
+      }, {
+        "Effect": "Allow",
+        "Action": "s3:PutObject",
+        "Resource": ["arn:aws:s3:::mybucket",
+                     "arn:aws:s3:::mybucket/*"]
+        }
+      ]
+    }
+    
+## S3 Usage
+
+Although Amazon S3 is very cheap online storage, video files - especially HD video captured by iOS devices - is also very big. When using iOS 8, the default 720p video preset records at a rate of approximately 5 GB per hour, which costs $0.12 USD per month to store at current Amazon Reduced-Redundancy rates.
+
+
+## LICENSE
+
+Demo Recorder is open-source software, licensed under the [MIT license](https://github.com/twg/demo-recorder/blob/master/LICENSE).
