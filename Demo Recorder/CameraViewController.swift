@@ -9,7 +9,7 @@
 import UIKit
 import AVFoundation
 
-class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelegate {
+class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelegate, ActivityDetectorDelegate {
     // MARK: Views
     @IBOutlet weak var stateLabel: UILabel!
     @IBOutlet weak var countdownLabel: UILabel!
@@ -17,16 +17,11 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
     @IBOutlet weak var colorView: UIView!
     @IBOutlet weak var cameraPreviewView: UIView!
 
-    // MARK: Lifecycle Methods
+    // MARK: Globals & Lifecycle
+    let activityDetector = ActivityDetector()
 
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        NSNotificationCenter.defaultCenter().addObserver(self,
-            selector:Selector("updateCalibrationParameters"),
-            name:NSUserDefaultsDidChangeNotification,
-            object:nil
-        )
 
         stopRecording()
 
@@ -47,76 +42,15 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
         }
     }
 
-    override func viewDidLayoutSubviews() {
-        if let layer = previewLayer {
-            layer.frame = cameraPreviewView.bounds
-        }
-    }
-
-    deinit {
-        NSNotificationCenter.defaultCenter().removeObserver(self)
-    }
-
-    override func viewDidAppear(animated: Bool) {
-        super.viewDidAppear(animated)
-        updateCalibrationParameters()
-    }
-
-
-    // MARK: Calibration Parameters & NSUserDefaults
-    var threshold: Double = -10;
-    var secondsRequiredToStart: NSTimeInterval = 0.6;
-    var secondsRequiredToStop: NSTimeInterval = 10;
-
-    func updateCalibrationParameters() {
-        let userDefaults = NSUserDefaults.standardUserDefaults()
-
-        var value: Double = 0
-
-        value = userDefaults.doubleForKey("DRThreshold")
-        if value != 0 {
-            threshold = value
-        }
-
-        value = userDefaults.doubleForKey("DRMinimumTriggerTime")
-        if value != 0 {
-            secondsRequiredToStart = value
-        }
-
-        value = userDefaults.doubleForKey("DRMinimumRecordTime")
-        if value != 0 {
-            secondsRequiredToStop = value
-        }
-    }
-
     // MARK: Video Capture
-    enum Mode {
-        case WaitingForAudioActivity
-        case Recording
-    }
-
     let captureSession = AVCaptureSession()
 
     let sessionPreset = AVCaptureSessionPreset1280x720
-    let pollInterval: NSTimeInterval = 0.1
-
-    var measuredConsecutiveReadings: Int = 0;
-    var mode: Mode = Mode.WaitingForAudioActivity
     var movieOutput: AVCaptureMovieFileOutput?
-    var previewLayer: AVCaptureVideoPreviewLayer?
-
-    func secondsLeftUntilTransition() -> NSTimeInterval {
-        let elapsedSeconds = (NSTimeInterval(measuredConsecutiveReadings) * pollInterval)
-
-        switch (mode) {
-        case Mode.WaitingForAudioActivity:
-            return secondsRequiredToStart - elapsedSeconds
-        case Mode.Recording:
-            return secondsRequiredToStop - elapsedSeconds
-        }
-    }
 
     func beginSession(#camera: AVCaptureDevice) {
+        activityDetector.delegate = self
+
         captureSession.sessionPreset = sessionPreset
 
         var err : NSError? = nil
@@ -134,17 +68,16 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
 
         captureSession.addInput(microphoneInput)
 
-        previewLayer = AVCaptureVideoPreviewLayer(session: captureSession)
-        if let layer = previewLayer {
-            layer.frame = CGRect(origin: CGPointZero, size: cameraPreviewView.frame.size)
-            cameraPreviewView.layer.addSublayer(layer)
+        cameraPreviewView.layoutIfNeeded()
+        let previewLayer = AVCaptureVideoPreviewLayer(session: captureSession)
+        previewLayer.frame = CGRect(origin: CGPointZero, size: cameraPreviewView.frame.size)
+        cameraPreviewView.layer.addSublayer(previewLayer)
 
-            let previewLayerConnection: AVCaptureConnection = layer.connection
+        let previewLayerConnection: AVCaptureConnection = previewLayer.connection
 
-            if (previewLayerConnection.supportsVideoOrientation) {
-                let orientation = UIApplication.sharedApplication().statusBarOrientation
-                previewLayerConnection.videoOrientation = orientation.captureOrientation
-            }
+        if (previewLayerConnection.supportsVideoOrientation) {
+            let orientation = UIApplication.sharedApplication().statusBarOrientation
+            previewLayerConnection.videoOrientation = orientation.captureOrientation
         }
 
         movieOutput = AVCaptureMovieFileOutput();
@@ -157,53 +90,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
         }
 
         captureSession.startRunning()
-        NSTimer.scheduledTimerWithTimeInterval(
-            pollInterval,
-            target: self,
-            selector: Selector("readPowerLevel"),
-            userInfo: nil,
-            repeats: true
-        )
-    }
-
-    func readPowerLevel() {
-        if let output = movieOutput {
-            let connection: AVCaptureConnection = output.connectionWithMediaType(AVMediaTypeAudio) as AVCaptureConnection
-
-            if let channel = connection.audioChannels.first as? AVCaptureAudioChannel {
-                var exceedsThreshold: Bool = false
-
-                switch (mode) {
-                case Mode.WaitingForAudioActivity:
-                    exceedsThreshold = Double(channel.averagePowerLevel) > threshold
-                case Mode.Recording:
-                    exceedsThreshold = Double(channel.averagePowerLevel) < threshold
-                }
-
-                if (exceedsThreshold) {
-                    measuredConsecutiveReadings++
-                } else {
-                    measuredConsecutiveReadings = 0
-                }
-            }
-        }
-
-        let secondsElapsed = NSTimeInterval(measuredConsecutiveReadings) * pollInterval
-
-        switch (mode) {
-        case Mode.WaitingForAudioActivity:
-            if secondsElapsed > secondsRequiredToStart {
-                startRecording()
-                measuredConsecutiveReadings = 0
-            }
-            countdownLabel.text = NSString(format: "%2.2f seconds of audio required to start", secondsLeftUntilTransition())
-        case Mode.Recording:
-            if secondsElapsed > secondsRequiredToStop {
-                stopRecording()
-                measuredConsecutiveReadings = 0
-            }
-            countdownLabel.text = NSString(format: "%2.2f seconds of recording left", secondsLeftUntilTransition())
-        }
+        activityDetector.startDetecting()
     }
 
     func startRecording() {
@@ -223,9 +110,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
         if let output = movieOutput {
             NSLog("Recording to %@", fileURL);
             output.startRecordingToOutputFileURL(fileURL, recordingDelegate:self);
-            mode = Mode.Recording
-            stateLabel.text = "Recording..."
-            updateViewColor()
+            updateView()
         } else {
             stateLabel.text = "Could not start recording."
         }
@@ -235,10 +120,11 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
         if let movie = movieOutput {
             movie.stopRecording()
         }
-        mode = Mode.WaitingForAudioActivity
-        stateLabel.text = "Waiting for audio activity..."
-        updateViewColor()
+
+        updateView()
     }
+
+    //  MARK: AVCaptureFileOutputRecordingDelegate Implementation
 
     func captureOutput(captureOutput: AVCaptureFileOutput!, didFinishRecordingToOutputFileAtURL outputFileURL: NSURL!, fromConnections connections: [AnyObject]!, error: NSError!) {
         if error == nil {
@@ -270,9 +156,6 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
                 self.updateUploadLabel()
             })
         })
-        request.contentMD5 = outputFileURL!.computeMD5()
-
-        NSLog("MD5 of video %@ = %@", outputFileURL, request.contentMD5);
 
         uploads.setValue(0.0, forKey: request.key);
         updateUploadLabel();
@@ -303,7 +186,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
                     self.uploads.setValue(-1.0, forKey:request.key);
                 });
             } else {
-                NSLog("File %@ uploaded successfully.", outputFileURL);
+                NSLog("File %@ uploaded successfully. %@", outputFileURL, task.exception);
 
                 var deleteError: NSError?
                 NSFileManager.defaultManager().removeItemAtURL(outputFileURL, error: &deleteError)
@@ -347,13 +230,47 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
         uploadLabel.text = text
     }
 
-    func updateViewColor() {
-        switch (mode) {
-        case Mode.WaitingForAudioActivity:
+    func updateView() {
+        switch (activityDetector.mode) {
+        case ActivityDetector.Mode.Inactive:
+            stateLabel.text = "Waiting for audio activity..."
+            countdownLabel.text = NSString(format: "%2.2f seconds of sound required to trigger...", activityDetector.secondsLeftUntilTransition)
             colorView.backgroundColor = UIColor(red: 0.0, green: 1.0, blue: 0.0, alpha: 1)
-        case Mode.Recording:
+        case ActivityDetector.Mode.Active:
+            stateLabel.text = "Recording..."
+            countdownLabel.text = NSString(format: "%2.2f seconds of silence required to stop...", activityDetector.secondsLeftUntilTransition)
             colorView.backgroundColor = UIColor(red: 1.0, green: 0.0, blue: 0.0, alpha: 1)
         }
+    }
+
+    //  MARK: ActivityDetectorDelegate Implementation
+    func currentSensorValue() -> Double {
+        if let output = movieOutput {
+            let connection = output.connectionWithMediaType(AVMediaTypeAudio) as AVCaptureConnection
+            let powerLevels = connection.audioChannels.map {($0 as AVCaptureAudioChannel).averagePowerLevel}
+
+            switch (powerLevels.count) {
+            case 0:
+                return 0
+            default:
+                let sum = powerLevels.reduce(Float(0), +)
+                return Double(sum / Float(powerLevels.count))
+            }
+        } else {
+            return 0
+        }
+    }
+
+    func secondsLeftUntilTransitionChanged() {
+        updateView()
+    }
+
+    func activityWasDetected() {
+        startRecording()
+    }
+
+    func inactivityWasDetected() {
+        stopRecording()
     }
 }
 

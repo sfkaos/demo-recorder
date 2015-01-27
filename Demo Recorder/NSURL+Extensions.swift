@@ -10,8 +10,8 @@ import Foundation
 
 let CHUNK_SIZE = 8192
 
-extension NSURL {
-    func computeMD5() -> NSString {
+public extension NSURL {
+    public func computeMD5() -> NSString {
         var error: NSError?
 
         let handle: NSFileHandle = NSFileHandle(forReadingFromURL: self, error: &error)!

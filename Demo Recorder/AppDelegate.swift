@@ -17,9 +17,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(application: UIApplication, didFinishLaunchingWithOptions launchOptions: [NSObject: AnyObject]?) -> Bool {
 
-        saveNSLogToFile()
-
-        //dimScreen()
+        //saveNSLogToFile()
         configureAWS()
 
         return true
@@ -34,6 +32,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func configureAWS() {
+        AWSLogger.defaultLogger().logLevel = AWSLogLevel.Debug
         AWSServiceManager.defaultServiceManager().setDefaultServiceConfiguration(
             AWSServiceConfiguration(
                 region: AWSRegionType.USEast1,
