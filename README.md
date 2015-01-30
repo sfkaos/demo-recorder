@@ -40,7 +40,6 @@ to upload video files to a given bucket. Below is an example IAM policy that pro
 
 Although Amazon S3 is very cheap online storage, video files - especially HD video captured by iOS devices - is also very big. When using iOS 8, the default 720p video preset records at a rate of approximately 5 GB per hour, which costs $0.12 USD per month to store at current Amazon Reduced-Redundancy rates.
 
-
 ## LICENSE
 
-Demo Recorder is open-source software, licensed under the [MIT license](https://github.com/twg/demo-recorder/blob/master/LICENSE).
+Demo Recorder is &copy; 2015 The Working Group, Inc., and licensed under the [MIT license](https://github.com/twg/demo-recorder/blob/master/LICENSE).
