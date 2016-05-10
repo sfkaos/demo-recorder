@@ -22,7 +22,6 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
 
     override func viewDidLoad() {
         super.viewDidLoad()
-
         stopRecording()
 
         let backCamera: AVCaptureDevice? = AVCaptureDevice.devices().find {
@@ -31,7 +30,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
         } as? AVCaptureDevice;
 
         if let camera = backCamera {
-            beginSession(camera: camera)
+            beginSession(camera)
         } else {
             UIAlertView(
                 title: "Could not find cameras",
@@ -48,25 +47,28 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
     let sessionPreset = AVCaptureSessionPreset1280x720
     var movieOutput: AVCaptureMovieFileOutput?
 
-    func beginSession(#camera: AVCaptureDevice) {
+    func beginSession(camera: AVCaptureDevice) {
+		
         activityDetector.delegate = self
 
         captureSession.sessionPreset = sessionPreset
-
-        var err : NSError? = nil
-
-        captureSession.addInput(AVCaptureDeviceInput(device: camera, error: &err))
-        if err != nil {
-            println("error: \(err?.localizedDescription)")
-        }
+		
+		do {
+			let input = try AVCaptureDeviceInput(device: camera)
+			captureSession.addInput(input)
+		}
+		catch _ {
+			print("Unable to add AVCaptureDeviceInput for camera")
+		}
 
         let microphone = AVCaptureDevice.defaultDeviceWithMediaType(AVMediaTypeAudio)
-        let microphoneInput = AVCaptureDeviceInput(device: microphone, error: &err)
-        if err != nil {
-            println("error: \(err?.localizedDescription)")
-        }
-
-        captureSession.addInput(microphoneInput)
+		do {
+			let microphoneInput = try AVCaptureDeviceInput(device: microphone)
+			captureSession.addInput(microphoneInput)
+		}
+		catch _ {
+			print("Unable to add microphone for camera")
+		}
 
         cameraPreviewView.layoutIfNeeded()
         let previewLayer = AVCaptureVideoPreviewLayer(session: captureSession)
@@ -96,7 +98,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
     func startRecording() {
         let documentsPath = NSSearchPathForDirectoriesInDomains(
             .DocumentDirectory, .UserDomainMask, true
-        ).first as NSString
+        ).first as String?
 
         let dateFormatter = NSDateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
@@ -104,8 +106,9 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
 
         let filename = dateFormatter.stringFromDate(NSDate())
 
-        let filePath: NSString = documentsPath.stringByAppendingPathComponent(filename + ".mp4")
-        let fileURL: NSURL = NSURL(fileURLWithPath: filePath)!
+		let folderURL:NSURL = NSURL(fileURLWithPath: documentsPath!)
+		
+        let fileURL: NSURL = folderURL.URLByAppendingPathComponent(filename + ".mp4")
 
         if let output = movieOutput {
             NSLog("Recording to %@", fileURL);
@@ -127,7 +130,7 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
     //  MARK: AVCaptureFileOutputRecordingDelegate Implementation
 
     func captureOutput(captureOutput: AVCaptureFileOutput!, didFinishRecordingToOutputFileAtURL outputFileURL: NSURL!, fromConnections connections: [AnyObject]!, error: NSError!) {
-        if error == nil {
+		if error == nil {
             NSLog("Capture output did finish recording to %@", outputFileURL);
             upload(outputFileURL);
         } else {
@@ -136,76 +139,75 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
     }
 
     //  MARK: Amazon S3 Interface
-    var transferManager: AWSS3TransferManager?
 
     func upload(outputFileURL: NSURL!) {
-        if transferManager == nil {
-            transferManager = AWSS3TransferManager.defaultS3TransferManager()
-        }
-
+		
+		let transferManager:AWSS3TransferManager = AWSS3TransferManager.defaultS3TransferManager()
+		
         let request = AWSS3TransferManagerUploadRequest()
         request.bucket = Secrets.AWSS3Bucket
-        request.key = Secrets.AWSS3KeyPrefix.stringByAppendingPathComponent(outputFileURL.lastPathComponent!)
+        request.key = Secrets.AWSS3KeyPrefix + "/" + outputFileURL.lastPathComponent!
         request.body = outputFileURL
         request.storageClass = AWSS3StorageClass.ReducedRedundancy
         request.uploadProgress = ({
             (bytesSent: Int64, totalBytesSent: Int64,  totalBytesExpectedToSend: Int64) in
             dispatch_async(dispatch_get_main_queue(), {
                 let percent = Double(totalBytesSent) / Double(totalBytesExpectedToSend);
-                self.uploads.setValue(percent, forKey: request.key)
+                self.uploads.setValue(percent, forKey: request.key!)
                 self.updateUploadLabel()
             })
         })
 
-        uploads.setValue(0.0, forKey: request.key);
+        uploads.setValue(0.0, forKey: request.key!);
         updateUploadLabel();
-
-        transferManager!.upload(request).continueWithBlock({ (task: BFTask!) -> AnyObject! in
-            if task.error != nil {
-                if task.error.domain == AWSS3TransferManagerErrorDomain {
-                    switch task.error.code {
-                    case AWSS3TransferManagerErrorType.Cancelled.rawValue:
-                        NSLog("Upload cancelled!");
-                    case AWSS3TransferManagerErrorType.Paused.rawValue:
-                        NSLog("Upload paused!");
-                    default:
-                        NSLog("Error: %@", task.error);
-
-                        //  Retry the upload after 5 seconds
-                        let delaySeconds = 5.0
-                        let delayTime: dispatch_time_t = dispatch_time(DISPATCH_TIME_NOW,
-                            Int64(delaySeconds * Double(NSEC_PER_SEC)))
-                        dispatch_after(delayTime, dispatch_get_main_queue()) {
-                            self.upload(outputFileURL);
-                        }
-                    }
-                } else {
-                    NSLog("Unknown error while uploading: %@", task.error);
-                }
-                dispatch_async(dispatch_get_main_queue(), {
-                    self.uploads.setValue(-1.0, forKey:request.key);
-                });
-            } else {
-                NSLog("File %@ uploaded successfully. %@", outputFileURL, task.exception);
-
-                var deleteError: NSError?
-                NSFileManager.defaultManager().removeItemAtURL(outputFileURL, error: &deleteError)
-                if let error = deleteError {
-                    NSLog("Could not delete %@: %@", outputFileURL, error)
-                }
-
-                dispatch_async(dispatch_get_main_queue(), {
-                    self.uploads.removeObjectForKey(request.key);
-                });
-            }
-
-            dispatch_async(dispatch_get_main_queue(), {
-                self.updateUploadLabel();
-            });
-
-            return nil;
-        })
-    }
+		
+		transferManager.upload(request).continueWithBlock({ (task: AWSTask) -> AnyObject! in
+			if task.error != nil {
+				if task.error!.domain == AWSS3TransferManagerErrorDomain {
+					switch task.error!.code {
+					case AWSS3TransferManagerErrorType.Cancelled.rawValue:
+						print("Upload cancelled!");
+					case AWSS3TransferManagerErrorType.Paused.rawValue:
+						print("Upload paused!");
+					default:
+						print("Error: %@", task.error);
+						
+						//  Retry the upload after 5 seconds
+						let delaySeconds = 5.0
+						let delayTime: dispatch_time_t = dispatch_time(DISPATCH_TIME_NOW,
+							Int64(delaySeconds * Double(NSEC_PER_SEC)))
+						dispatch_after(delayTime, dispatch_get_main_queue()) {
+							self.upload(outputFileURL);
+						}
+					}
+				} else {
+					print("Unknown error while uploading: %@", task.error);
+				}
+				dispatch_async(dispatch_get_main_queue(), {
+					self.uploads.setValue(-1.0, forKey:request.key!);
+				});
+			} else {
+				print("File %@ uploaded successfully. %@", outputFileURL, task.exception);
+				
+				do {
+					try NSFileManager.defaultManager().removeItemAtURL(outputFileURL)
+				}
+				catch _ {
+					print("Could not delete %@", outputFileURL)
+				}
+				
+				dispatch_async(dispatch_get_main_queue(), {
+					self.uploads.removeObjectForKey(request.key!);
+				});
+			}
+			
+			dispatch_async(dispatch_get_main_queue(), {
+				self.updateUploadLabel();
+			});
+			
+			return nil;
+		})
+	}
 
     //  MARK: View Management
 
@@ -222,8 +224,8 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
                     if count > 0 {
                         text = text.stringByAppendingString(", ")
                     }
-                    text = text.stringByAppendingString(NSString(format:"%@: %2.2f%%", key, progress * 100))
-                    count++
+                    text = text.stringByAppendingString(String(format:"%@: %2.2f%%", key, progress * 100))
+                    count += 1
                 }
             }
         }
@@ -231,34 +233,35 @@ class CameraViewController: UIViewController, AVCaptureFileOutputRecordingDelega
     }
 
     func updateView() {
+		
         switch (activityDetector.mode) {
         case ActivityDetector.Mode.Inactive:
             stateLabel.text = "Waiting for audio activity..."
-            countdownLabel.text = NSString(format: "%2.2f seconds of sound required to trigger...", activityDetector.secondsLeftUntilTransition)
+            countdownLabel.text = String(format: "%2.2f seconds of sound required to trigger...", activityDetector.secondsLeftUntilTransition)
             colorView.backgroundColor = UIColor(red: 0.0, green: 1.0, blue: 0.0, alpha: 1)
         case ActivityDetector.Mode.Active:
             stateLabel.text = "Recording..."
-            countdownLabel.text = NSString(format: "%2.2f seconds of silence required to stop...", activityDetector.secondsLeftUntilTransition)
+            countdownLabel.text = String(format: "%2.2f seconds of silence required to stop...", activityDetector.secondsLeftUntilTransition)
             colorView.backgroundColor = UIColor(red: 1.0, green: 0.0, blue: 0.0, alpha: 1)
         }
     }
 
     //  MARK: ActivityDetectorDelegate Implementation
     func currentSensorValue() -> Double {
+		
         if let output = movieOutput {
             let connection = output.connectionWithMediaType(AVMediaTypeAudio) as AVCaptureConnection
-            let powerLevels = connection.audioChannels.map {($0 as AVCaptureAudioChannel).averagePowerLevel}
+            let powerLevels = connection.audioChannels.map {($0 as! AVCaptureAudioChannel).averagePowerLevel}
 
             switch (powerLevels.count) {
             case 0:
                 return 0
             default:
-                let sum = powerLevels.reduce(Float(0), +)
+                let sum = powerLevels.reduce(Float(0), combine: +)
                 return Double(sum / Float(powerLevels.count))
             }
-        } else {
-            return 0
         }
+		return 0
     }
 
     func secondsLeftUntilTransitionChanged() {

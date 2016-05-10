@@ -25,23 +25,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     //  MARK: Helpers
 
-    func dimScreen() {
-        if let screen: UIScreen = UIScreen.screens().first as? UIScreen {
-            screen.brightness = 0.0
-        }
-    }
-
     func configureAWS() {
-        AWSLogger.defaultLogger().logLevel = AWSLogLevel.Debug
-        AWSServiceManager.defaultServiceManager().setDefaultServiceConfiguration(
-            AWSServiceConfiguration(
-                region: AWSRegionType.USEast1,
-                credentialsProvider: AWSStaticCredentialsProvider(
-                    accessKey: Secrets.AWSAccessKey,
-                    secretKey: Secrets.AWSSecretKey
-                )
-            )
-        )
+       // AWSLogger.defaultLogger().logLevel = AWSLogLevel.Debug
+		let config = AWSServiceConfiguration(
+			region: AWSRegionType.USEast1,
+			credentialsProvider: AWSStaticCredentialsProvider(
+				accessKey: Secrets.AWSAccessKey,
+				secretKey: Secrets.AWSSecretKey
+			)
+		)
+		
+		
+        let serviceManager = AWSServiceManager.defaultServiceManager()
+		serviceManager.defaultServiceConfiguration = config
     }
 
     func saveNSLogToFile() {

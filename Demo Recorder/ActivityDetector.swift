@@ -54,13 +54,14 @@ class ActivityDetector {
 
     //  MARK: Initialization & Lifecycle
     var mode: Mode = Mode.Inactive
-    let pollInterval: NSTimeInterval = 0.1
+    let pollInterval: NSTimeInterval = 0.6
     var measuredConsecutiveReadings: Int = 0
 
     var delegate: ActivityDetectorDelegate?
     init() {
+
         NSNotificationCenter.defaultCenter().addObserver(self,
-            selector:Selector("updateCalibrationParameters"),
+		selector:#selector(ActivityDetector.updateCalibrationParameters),
             name:NSUserDefaultsDidChangeNotification,
             object:nil
         )
@@ -76,7 +77,7 @@ class ActivityDetector {
     var secondsRequiredToStart: NSTimeInterval = 0.6;
     var secondsRequiredToStop: NSTimeInterval = 10;
 
-    func updateCalibrationParameters() {
+	@objc func updateCalibrationParameters() {
         let userDefaults = NSUserDefaults.standardUserDefaults()
         var value: Double = 0
 
@@ -117,7 +118,7 @@ class ActivityDetector {
         timer = NSTimer.scheduledTimerWithTimeInterval(
             pollInterval,
             target: self,
-            selector: Selector("pollSensor"),
+            selector: #selector(ActivityDetector.pollSensor),
             userInfo: nil,
             repeats: true
         )
@@ -145,7 +146,7 @@ class ActivityDetector {
 
             let previousNumberOfReadings = measuredConsecutiveReadings
             if (exceedsThreshold) {
-                measuredConsecutiveReadings++
+                measuredConsecutiveReadings += 1
             } else {
                 measuredConsecutiveReadings = 0
             }

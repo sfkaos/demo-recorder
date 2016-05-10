@@ -12,15 +12,21 @@ let CHUNK_SIZE = 8192
 
 public extension NSURL {
     public func computeMD5() -> NSString {
-        var error: NSError?
+        //var error: NSError?
 
-        let handle: NSFileHandle = NSFileHandle(forReadingFromURL: self, error: &error)!
+        //let handle: NSFileHandle = NSFileHandle(fileDescriptor: self, closeOnDealloc: &error)!
+		let handle: NSFileHandle?
+		do {
+		  handle = try NSFileHandle(forReadingFromURL: self)
+		}catch {
+		  handle = nil;
+		}
 
         let md5 = UnsafeMutablePointer<CC_MD5_CTX>.alloc(1)
         CC_MD5_Init(md5)
 
         while (true) {
-            let fileData = handle.readDataOfLength(CHUNK_SIZE)
+            let fileData = handle!.readDataOfLength(CHUNK_SIZE)
             CC_MD5_Update(md5, fileData.bytes, CC_LONG(fileData.length));
             if fileData.length == 0 {
                 break
@@ -33,7 +39,7 @@ public extension NSURL {
         md5.dealloc(1)
 
         return digest.reduce("", combine: { (string: NSString, digit: UInt8) -> NSString in
-            return string.stringByAppendingString(NSString(format: "%02x", digit))
+            return string.stringByAppendingString(NSString(format: "%02x", digit) as String)
         })
     }
 }
